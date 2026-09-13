@@ -123,29 +123,8 @@ function createWindow() {
 
   win.loadFile('index.html');
 
-  // Dev hook: FIRE68_CAPTURE=<dir> renders each tab to a PNG and exits.
-  if (process.env.FIRE68_CAPTURE) {
-    const outDir = process.env.FIRE68_CAPTURE;
-    win.webContents.once('did-finish-load', async () => {
-      await new Promise((r) => setTimeout(r, 5000));
-      for (const theme of ['dark', 'light']) {
-      await win.webContents.executeJavaScript(
-        `document.documentElement.dataset.theme = '${theme}'`
-      );
-      for (const view of ['keys', 'pad', 'device']) {
-        await win.webContents.executeJavaScript(
-          `document.querySelector('nav button[data-view="${view}"]').click()`
-        );
-        await new Promise((r) => setTimeout(r, 900));
-        const img = await win.webContents.capturePage();
-        const buf = img.toPNG();
-        fs.writeFileSync(path.join(outDir, `${theme}-${view}.png`), buf);
-        console.log('captured', theme, view, buf.length, 'bytes');
-      }
-      }
-      app.quit();
-    });
-  }
+  // Screenshot hook for UI work. Inert unless ELECTRON_CAPTURE is set.
+  require('./capture-hook')(app, win);
 }
 
 app.whenReady().then(createWindow);

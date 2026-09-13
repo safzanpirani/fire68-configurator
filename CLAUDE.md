@@ -124,9 +124,19 @@ Restore stock values on a key with
 
 ## Adding features
 
-`reference/hub-configurator.deobfuscated.js` is the deobfuscated vendor bundle
-and the source for decoding anything not yet implemented. It is one very long
-line, so grep with context windows fails. Index by byte offset instead:
+`reference/` holds the deobfuscated vendor bundle, the source for decoding
+anything not yet implemented. Two copies, see `reference/README.md`.
+
+Read and grep `reference/hub-configurator.readable.js`. It is formatted and
+renamed, 26,414 lines, so ordinary `grep -n` with context works:
+
+```bash
+grep -n 'get \["socdPriority"\]' -A 6 reference/hub-configurator.readable.js
+```
+
+`reference/hub-configurator.deobfuscated.js` keeps the original mangled
+identifiers and is one very long line, so grep with context windows fails
+there. Reach for it only when a mangled name matters, and index by byte offset:
 
 ```python
 src = open('reference/hub-configurator.deobfuscated.js', encoding='utf8').read()

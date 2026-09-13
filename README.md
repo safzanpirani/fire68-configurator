@@ -18,6 +18,7 @@ virtual Xbox controller, so a half-pressed key produces a half-deflected stick.
 | [docs/GAMEPAD.md](docs/GAMEPAD.md) | Analog controller emulation, configuration and tuning |
 | [docs/STATUS.md](docs/STATUS.md) | What is verified on hardware, what is inferred, what is unknown |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Mapped but unimplemented features |
+| [reference/README.md](reference/README.md) | The vendor bundle copies and how they were produced |
 
 ## Requirements
 
@@ -171,7 +172,11 @@ Those are the values every key carries from the factory.
 
 ## License and scope
 
-This is an interoperability project for hardware the author owns. The
-`reference/` directory holds a deobfuscated copy of the vendor's own web
-bundle, kept as protocol documentation. Treat that file as third-party
-proprietary code and do not redistribute it.
+This project's code and documentation are licensed under the
+[Apache License 2.0](LICENSE).
+
+It is an interoperability project for hardware the author owns. The
+`reference/` directory holds deobfuscated copies of the vendor's own web
+bundle, kept as protocol documentation with the vendor's permission. That
+directory is third-party proprietary code and the Apache grant does not extend
+to it. See [NOTICE](NOTICE) and [reference/README.md](reference/README.md).

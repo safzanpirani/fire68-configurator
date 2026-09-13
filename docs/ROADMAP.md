@@ -55,15 +55,17 @@ supports.
 
 ## Structures worth decoding
 
-**Action classes.** The key matrix stores a class byte alongside the code.
-Known classes include general keys, mouse buttons, mouse wheel, mouse movement,
-consumer controls, system keys, launching an executable, opening a URL, macros,
-and the hall-effect specific classes for dynamic keystroke, toggle, multi-tap,
-rapid trigger, SOCD and one-key-snap. Decoding these unlocks full remapping.
+**Action classes.** Decoded — the full class enum is now in `PROTOCOL.md`.
+Only `0x10` (general) and `0xF0` (function) have been seen on hardware; the
+remaining twenty class values come from the vendor bundle and are unexercised.
+What is still missing is the code encoding *within* each class, which is what
+full remapping actually needs.
 
-**SOCD.** The key structure has a `socdPriority` field and the vendor bundle
-lists modes for neutral, first input, last input and balanced resolution. This
-is a competitive feature worth exposing.
+**SOCD.** The key structure has a `socdPriority` field in bits 4-7 of byte 1,
+and the vendor bundle lists modes for neutral, first input, last input and
+balanced resolution. Note that the vendor accessor masks the nibble without
+shifting it down, so the mode values are `0x00`, `0x10`, `0x20` and so on; see
+`PROTOCOL.md`. This is a competitive feature worth exposing.
 
 **Trigger type.** Every key reads `0` on a stock board. The vendor bundle
 implies other values select rapid trigger and the hall-effect modes. Mapping

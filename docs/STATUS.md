@@ -64,7 +64,9 @@ These come from the vendor bundle and have not been run against hardware.
 | Calibration commands | Not exercised, and a mistake here could require recalibration |
 | `0xA1` sync reports | The marker is known, the payload layout is not |
 | Trigger type semantics | Every key reads `0`, and the meaning of other values is unconfirmed |
-| SOCD priority field | Location is known, encoding is not |
+| SOCD priority field | Location and nibble alignment are known, the mode values are not confirmed |
+| Key action classes | The full class enum is decoded from the bundle; only `0x10` and `0xF0` seen on hardware |
+| Sibling product IDs | 32 models share this protocol per the bundle; only `0x104E` tested |
 | Function area beyond byte 24 | Undecoded |
 
 ## Open questions

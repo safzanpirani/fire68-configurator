@@ -135,6 +135,52 @@ Whether the analog stream's key id uses this same numbering is **not yet
 confirmed**. Press one known key under `fire68 monitor` and compare the
 reported slot against this matrix to settle it.
 
+## Key action classes — from the vendor bundle
+
+The class byte in each key-matrix slot selects how the two code bytes are
+interpreted. The full enum, recovered from the vendor bundle and **not yet
+exercised on hardware** beyond classes `0x10` and `0xF0`:
+
+| Class | Name | Meaning |
+|---|---|---|
+| `0x00` | null | Unassigned |
+| `0x10` | general | HID keyboard usage — **verified** |
+| `0x14` | oksRt | One-key-snap rapid trigger |
+| `0x20` | mouse | Mouse button |
+| `0x21` | mouseWheel | Wheel |
+| `0x22` | mouseSwing | Mouse swing |
+| `0x23` | mouseXY | Mouse movement |
+| `0x30` | consumer | Consumer control (media) |
+| `0x40` | system | System control (power, sleep) |
+| `0x50` | exe | Launch an executable |
+| `0x60` | web | Open a URL |
+| `0x70` | macro | Run a macro |
+| `0x80` | keyboardWheel | Keyboard wheel |
+| `0x90` | dsk | Dynamic keystroke |
+| `0x91` | tgl | Toggle key |
+| `0x92` | mtk | Multi-tap key |
+| `0x93` | rs | Rapid trigger |
+| `0x94` | socd | SOCD |
+| `0x95` | oks | One-key-snap |
+| `0xF0` | function | Fn action — **verified** |
+
+The hall-effect classes (`0x90` through `0x95`) pair with the command IDs in
+the 162-167 range, which carry the per-feature structures. Their payload
+layouts are not decoded.
+
+### SOCD priority is stored unshifted
+
+The `socdPriority` field occupies bits 4-7 of byte 1 in the trigger-travel
+structure, but the vendor accessor masks without shifting:
+
+```js
+get ["socdPriority"]() { return 240 & this.raw.getUint8(this.offset + 1); }
+```
+
+So its values are `0x00`, `0x10`, `0x20` and so on, not 0, 1, 2. A decoder that
+shifts the nibble down will renumber every mode. Contrast
+`magneticShaftDefaultType` in the same structure, which does shift.
+
 ## Function-variable area — partly verified
 
 `GetFunc` returns a 56-byte window. Offsets are relative to the start of that

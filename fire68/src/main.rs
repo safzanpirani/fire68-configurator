@@ -408,10 +408,6 @@ fn verify_encoding(dev: &Fire68, json_mode: bool) -> Result<()> {
 }
 
 fn monitor(dev: &Fire68, json_mode: bool) -> Result<()> {
-    let area = dev.read_function_area()?;
-    if !device::debug_mode(&area) && !json_mode {
-        println!("note: debug mode is off. If nothing appears, run `fire68 debug on`.");
-    }
     dev.start_fast_communication()?;
     if !json_mode {
         println!("Press keys. Ctrl+C to stop.\n");

@@ -56,12 +56,12 @@ mid-transfer must be skipped rather than treated as the answer.
 
 | ID | Name | Status |
 |---|---|---|
-| 1 | FastCommunicationStart | verified |
+| 1 | FastCommunicationStart | verified — starts the analog stream |
 | 2 | FastCommunicationStop | verified |
 | 3 | GetInfo | verified — firmware version |
 | 4 | GetBase | verified — echoes VID, PID, version |
 | 5 | GetFunc | verified — function-variable area |
-| 6 | SetFunc | untested |
+| 6 | SetFunc | verified — toggled one bit, all other bytes unchanged |
 | 7 | GetDefaultKeyMatrix | verified |
 | 8 | GetUseKeyMatrix | verified — active key matrix |
 | 9 | SetUseKeyMatrix | untested |
@@ -100,9 +100,12 @@ windows. Fields are little-endian and bit-packed.
 | 6 | 0-8 | rapid trigger, release |
 | 6 | 9-15 | release dead zone |
 
-Travel values are 9-bit, so `0..=511`. The unit is **0.01 mm**: a stock board
+Travel values are 9-bit, so `0..=511`. The unit is **0.01 mm**. A stock board
 reads `150` on every key, which is the 1.50 mm default the vendor UI shows.
-Rapid trigger reads `29` (0.29 mm) by default.
+Rapid trigger reads `29`, which is 0.29 mm.
+
+Measured full travel on the reference board is `350`, so a key bottoms out at
+3.50 mm. Values above that are reachable in the field but never reported.
 
 ## Key matrix — verified
 
@@ -110,10 +113,13 @@ Rapid trigger reads `29` (0.29 mm) by default.
 code_lo]`. Class `0x10` is a plain keyboard key and the code is its HID usage.
 Class `0xF0` is a function action.
 
-Slot index is the same index used by the trigger-travel table and by the analog
-debug stream, so reading this matrix identifies a physical key without needing
-anyone to press it. On the reference board W, A, S and D sit at slots 64, 9, 55
-and 10.
+Slot index is the same index used by the trigger-travel table, so reading this
+matrix identifies a physical key without needing anyone to press it. On the
+reference board W, A, S and D sit at slots 64, 9, 55 and 10.
+
+Whether the analog stream's key id uses this same numbering is **not yet
+confirmed**. Press one known key under `fire68 monitor` and compare the
+reported slot against this matrix to settle it.
 
 ## Function-variable area — partly verified
 
@@ -145,8 +151,9 @@ matches the vendor UI.
 
 ## Analog travel stream
 
-Setting the `debugMode` bit and sending `FastCommunicationStart` makes the
-keyboard emit `0xA0` reports as keys move. Layout, relative to the packet:
+Sending `FastCommunicationStart` makes the keyboard emit `0xA0` reports as keys
+move. No configuration change is needed; see the section below. Layout,
+relative to the packet:
 
 | Offset | Size | Field |
 |---|---|---|
@@ -155,8 +162,42 @@ keyboard emit `0xA0` reports as keys move. Layout, relative to the packet:
 | 6 | 2 | travel, **big-endian** |
 | 10 | 1 | calibration count |
 
-This is the analog source for gamepad emulation. The travel field is the same
-0.01 mm unit as the trigger table, so a 4 mm switch bottoms out near 400.
+This is the analog source for gamepad emulation. The travel field uses the same
+0.01 mm unit as the trigger table and saturates at 350 on the reference board.
 
-Enabling `debugMode` requires a `SetFunc` write, which has not yet been
-exercised against hardware.
+## The debug flag is not required — verified
+
+The function area holds a `debugMode` bit, and the natural reading is that the
+stream depends on it. Hardware says otherwise. With the flag **off**,
+`FastCommunicationStart` alone produced a full travel curve:
+
+```
+slot     raw
+   0      33
+   0     350     <- bottomed out
+   0     331
+   0     193
+   0     104
+   0       6
+   0       0
+```
+
+No configuration write is needed to use the analog stream.
+
+The vendor app never exercises this path at all. Within the FIRE68 code,
+`debugMode` appears only in its own accessors and JSON dump with no caller,
+`startCommunication` is defined and never called, and the `debug-reporting` and
+`synchronous-reporting` events are dispatched with no listener. The fully
+developed realtime ADC feature in the same bundle belongs to a different device
+family.
+
+## Write paths — verified
+
+`SetFunc` was exercised by toggling the debug bit. Byte 7 moved from `0x02` to
+`0x0a` and back, and every other byte in the function area kept its value.
+Brightness, lighting mode and colour were unaffected.
+
+Before writing a bit-packed structure, re-encode what was decoded and compare it
+against the device's own bytes. All 1024 bytes of the key table round-trip
+exactly, which proves every field is modelled. `fire68 verify-encoding`
+performs this check.

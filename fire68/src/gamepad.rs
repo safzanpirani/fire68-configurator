@@ -12,7 +12,7 @@ use std::str::FromStr;
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::device::{self, Fire68};
+use crate::device::Fire68;
 use crate::proto;
 
 /// Where a key's travel is sent on the virtual pad.
@@ -69,7 +69,8 @@ pub struct Binding {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
-    /// Raw travel treated as fully pressed. Confirm yours with `monitor`.
+    /// Raw travel treated as fully pressed, in hundredths of a millimetre.
+    /// Measured at 350 (3.50 mm) on the reference board; confirm with `monitor`.
     pub travel_max: u16,
     /// Raw travel below which the key counts as released.
     pub travel_deadzone: u16,
@@ -135,7 +136,7 @@ pub fn write_starter_config(dev: &Fire68, path: &str, json_mode: bool) -> Result
         bail!("could not find W, A, S or D in the key matrix; bind slots by hand using `fire68 keymap`");
     }
 
-    let cfg = Config { travel_max: 400, travel_deadzone: 20, bindings };
+    let cfg = Config { travel_max: 350, travel_deadzone: 20, bindings };
     std::fs::write(path, serde_json::to_string_pretty(&cfg)?)
         .with_context(|| format!("writing {path}"))?;
 
@@ -161,8 +162,8 @@ pub fn write_starter_config(dev: &Fire68, path: &str, json_mode: bool) -> Result
 Could not locate: {}. Add them by hand from `fire68 keymap`.", missing.join(", "));
     }
     println!("
-travel_max is a guess of 400 (4.00 mm). Confirm with `fire68 monitor`:");
-    println!("bottom out a key and set travel_max to the largest raw value you see.");
+travel_max is set to 350 (3.50 mm), measured on the reference board.");
+    println!("Confirm with `fire68 monitor`: bottom out a key and use the largest value.");
     Ok(())
 }
 
@@ -206,12 +207,6 @@ pub fn run(dev: &Fire68, path: &str, json_mode: bool) -> Result<()> {
     })?;
     let cfg: Config = serde_json::from_str(&text).with_context(|| format!("parsing {path}"))?;
     cfg.validate()?;
-
-    let area = dev.read_function_area()?;
-    if !device::debug_mode(&area) && !json_mode {
-        println!("note: debug mode is off, so no analog data will arrive.");
-        println!("      run `fire68 debug on` first.");
-    }
 
     let client = vigem_client::Client::connect()
         .context("connecting to ViGEmBus (is the driver installed?)")?;
@@ -292,7 +287,7 @@ mod tests {
 
     fn cfg() -> Config {
         Config {
-            travel_max: 400,
+            travel_max: 350,
             travel_deadzone: 20,
             bindings: vec![Binding { key: 1, target: Target::LeftStickUp }],
         }
@@ -307,8 +302,8 @@ mod tests {
     #[test]
     fn travel_scales_between_deadzone_and_max() {
         let c = cfg();
-        assert!((c.normalise(210) - 0.5).abs() < 0.01, "midpoint should be ~0.5");
-        assert_eq!(c.normalise(400), 1.0);
+        assert!((c.normalise(185) - 0.5).abs() < 0.01, "midpoint should be ~0.5");
+        assert_eq!(c.normalise(350), 1.0);
     }
 
     #[test]

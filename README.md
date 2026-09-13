@@ -1,9 +1,30 @@
 # fire68
 
-A local command-line configurator for the FIRE68 hall-effect keyboard, plus
-analog gamepad emulation. No browser, no vendor web app.
+A local configurator for the FIRE68 hall-effect keyboard. It replaces the
+vendor web app with a command-line tool and a desktop UI, and it adds analog
+gamepad emulation that the vendor software does not offer.
 
-The vendor protocol is documented in [PROTOCOL.md](PROTOCOL.md).
+The keyboard reports how far each key is pressed, not merely whether it is
+down. This project exposes that travel for configuration and feeds it to a
+virtual Xbox controller, so a half-pressed key produces a half-deflected stick.
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [PROTOCOL.md](PROTOCOL.md) | The vendor HID protocol: framing, commands, data structures |
+| [docs/REVERSE-ENGINEERING.md](docs/REVERSE-ENGINEERING.md) | How the protocol was recovered, and how to repeat it |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Code layout and the design decisions behind it |
+| [docs/GAMEPAD.md](docs/GAMEPAD.md) | Analog controller emulation, configuration and tuning |
+| [docs/STATUS.md](docs/STATUS.md) | What is verified on hardware, what is inferred, what is unknown |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Mapped but unimplemented features |
+
+## Requirements
+
+- Rust 1.80 or newer
+- Windows (the HID transport and the virtual controller are Windows-specific)
+- [ViGEmBus](https://github.com/nefarius/ViGEmBus/releases) for gamepad emulation only
+- Node.js 18 or newer for the desktop UI only
 
 ## Build
 
@@ -14,105 +35,64 @@ cargo build --release
 
 The binary lands at `fire68/target/release/fire68.exe`.
 
-## What works today
-
-These were exercised against a real FIRE68 on firmware 1.09:
+## Quick start
 
 ```
 fire68 list       # every HID interface the keyboard exposes
-fire68 info       # firmware version, debug mode, lighting, report rate
-fire68 travel     # per-key actuation point and rapid trigger
+fire68 info       # firmware version, lighting, report rate, debug flag
 fire68 keymap     # which key each slot index sends
-fire68 raw ...    # send an arbitrary command, for protocol exploration
-fire68 verify-encoding   # prove the encoder is byte-faithful before writing
-fire68 gamepad --test    # sweep a virtual Xbox pad, no keyboard needed
+fire68 travel     # per-key actuation point and rapid trigger
 ```
 
-Every command also takes `--json` for scripting or for the desktop app.
-
-`verify-encoding` passes on the reference board: re-encoding the decoded key
-table reproduces all 1024 device bytes exactly. `set-travel` refuses to write
-if that check ever fails.
-
-`gamepad --test` was confirmed working: the virtual pad appears to Windows and
-its sticks and triggers move.
-
-`fire68 info` on a stock board prints firmware `1.09`, brightness 100 and
-lighting mode 6. `fire68 travel` prints 128 slots at actuation `150`, which is
-1.50 mm.
-
-## What needs a person at the keyboard
-
-Every command above only reads. The commands below write to the keyboard or
-need someone to press a key, so they are untested:
+Make a key trigger earlier, at 1.00 mm instead of the 1.50 mm default:
 
 ```
-fire68 set-travel --key 64 --point 100    # 1.00 mm actuation on W
-fire68 debug on                           # enable the analog stream
-fire68 monitor                            # live analog travel per key
-fire68 gamepad --init                     # write a starter binding config
-fire68 gamepad                            # drive a virtual Xbox pad
+fire68 set-travel --key 64 --point 100
 ```
 
-### Suggested order
+Slot 64 is W on the reference board. Confirm your own with `fire68 keymap`.
 
-1. **Check the travel read-back first.**
+Watch analog travel as you press keys:
 
-   ```
-   fire68 travel
-   ```
+```
+fire68 monitor
+```
 
-   Note the current values so you can restore them.
+Drive a virtual Xbox controller from key travel:
 
-2. **Change one key and confirm it took.**
+```
+fire68 gamepad --init    # auto-detects W, A, S and D
+fire68 gamepad
+```
 
-   ```
-   fire68 set-travel --key 64 --point 100
-   fire68 travel
-   ```
+## Commands
 
-   Slot 64 is W on the reference board; confirm yours with `fire68 keymap`.
-   The command prints the before and after values. If the table now reads 100
-   for that slot, writes work. Restore with `--point 150`.
+| Command | Effect | Writes to keyboard |
+|---|---|---|
+| `list` | Enumerate the keyboard's HID interfaces | no |
+| `info` | Firmware version and global settings | no |
+| `keymap` | Slot index to key name | no |
+| `travel` | Per-key actuation and rapid trigger | no |
+| `monitor` | Stream live analog travel | no |
+| `verify-encoding` | Prove the encoder is byte-faithful | no |
+| `raw` | Send an arbitrary protocol command | depends |
+| `set-travel` | Change actuation and rapid trigger | yes |
+| `debug` | Toggle the debug flag | yes |
+| `gamepad` | Run the virtual controller | no |
+| `gamepad --init` | Write a starter binding file | no |
+| `gamepad --test` | Sweep the virtual pad without the keyboard | no |
 
-   If the keyboard misbehaves, the vendor web app will rewrite a clean config.
+Every command accepts `--json`, which emits a single JSON object. `monitor` and
+`gamepad` emit one JSON object per line so they can be consumed as a stream.
 
-3. **Turn on the analog stream.**
+## Units
 
-   ```
-   fire68 debug on
-   fire68 monitor
-   ```
-
-   Press and slowly release a key. Each report prints a slot index and a raw
-   travel value. Note the largest value you see when a key is bottomed out —
-   that is your `travel_max`, expected near 400.
-
-4. **Set up the gamepad.**
-
-   Install [ViGEmBus](https://github.com/nefarius/ViGEmBus/releases) first; the
-   virtual controller needs that driver.
-
-   ```
-   fire68 gamepad --init
-   ```
-
-   This reads the key matrix and binds W, A, S and D to the left stick
-   automatically. Edit `gamepad.json` to set `travel_max` to the value you saw
-   in step 3, then:
-
-   ```
-   fire68 gamepad
-   ```
-
-   Check it with any gamepad tester. A half-pressed W should read as a
-   half-deflected stick rather than full tilt.
+Travel values are hundredths of a millimetre throughout. An actuation point of
+`150` means 1.50 mm. Full travel measured 350 on the reference board, so a key
+bottoms out at 3.50 mm. The valid range for any travel field is 0 to 511,
+because the firmware stores these as 9-bit values.
 
 ## Desktop app
-
-An Electron UI in `gui/` drives the same binary. It does not reimplement the
-protocol: it spawns `fire68 --json` and renders the result, so there is one
-implementation of the wire format.
 
 ```
 cd gui
@@ -120,55 +100,57 @@ npm install
 npm start
 ```
 
+The UI does not reimplement the protocol. It spawns the Rust binary with
+`--json` and renders the result, so the wire format exists in exactly one
+place. Build the binary first.
+
 Four tabs:
 
-- **Keys** — every key with its actuation point, click one to edit actuation
-  and rapid trigger in millimetres, then apply.
-- **Analog** — live travel per key with bar graphs, and the peak value to use
-  as `travel_max`.
-- **Gamepad** — start and stop the virtual pad, with live stick and trigger
-  readouts.
-- **Device** — the debug-mode toggle and the encoder safety check.
+- **Keys** shows every key with its actuation point. Click one to edit
+  actuation and rapid trigger in millimetres, then apply.
+- **Analog** streams live travel per key with bar graphs and reports the peak
+  value observed.
+- **Gamepad** starts and stops the virtual controller and shows live stick and
+  trigger positions.
+- **Device** holds the debug flag toggle and the encoder safety check.
 
-The binary must be built first (`cargo build --release`); the app looks for it
-in `fire68/target/`. Relative config paths resolve against `gui/`, so either
-keep `gamepad.json` there or give an absolute path.
-
-Create the binding file from the CLI first, which auto-detects WASD:
-
-```
-cd gui
-../fire68/target/release/fire68.exe gamepad --init
-```
-
-## Gamepad bindings
-
-`gamepad.json`:
-
-```json
-{
-  "travel_max": 400,
-  "travel_deadzone": 20,
-  "bindings": [
-    { "key": 64, "target": "ly+" },
-    { "key": 9,  "target": "lx-" },
-    { "key": 55, "target": "ly-" },
-    { "key": 10, "target": "lx+" }
-  ]
-}
-```
-
-`key` is a slot index from `fire68 keymap`. `target` is one of `lx+`, `lx-`,
-`ly+`, `ly-`, `rx+`, `rx-`, `ry+`, `ry-`, `lt`, `rt`. Opposing bindings on the
-same axis subtract, so holding two keys part-way gives a blended deflection.
-
-`travel_deadzone` is the travel below which a key counts as fully released.
+Relative config paths resolve against `gui/`, so keep `gamepad.json` there or
+give an absolute path.
 
 ## Safety
 
-`fire68 raw` refuses to send command 238, the factory reset, because it wipes
-the keyboard's stored configuration.
+Three mechanisms guard against corrupting the keyboard's stored configuration.
 
-Writes are read-modify-write: the tool reads the whole table, changes the one
-field asked for, and writes it back. `set-travel` prints the before and after
-values and does nothing when they match.
+**Byte-faithfulness gate.** Before any write to the key table, the tool decodes
+the table, re-encodes it, and compares the result against the bytes the
+keyboard returned. A write proceeds only when every byte matches. This proves
+the encoder models every field, including bit-packed fields that share a byte
+with something the tool does not interpret. Run it directly with
+`fire68 verify-encoding`.
+
+**Read-modify-write.** Changing one field reads the whole structure, edits the
+single target field, and writes the structure back. Unrelated settings keep
+their values.
+
+**Factory reset is blocked.** `fire68 raw` refuses command 238, which erases the
+keyboard's stored configuration.
+
+If a write ever leaves the keyboard in a bad state, the vendor web app at
+`hub.fgg.com.cn` will rewrite a clean configuration.
+
+## Recovering from mistakes
+
+Restore the stock actuation and rapid trigger on one key:
+
+```
+fire68 set-travel --key 64 --point 150 --press-rt 29 --release-rt 29
+```
+
+Those are the values every key carries from the factory.
+
+## License and scope
+
+This is an interoperability project for hardware the author owns. The
+`reference/` directory holds a deobfuscated copy of the vendor's own web
+bundle, kept as protocol documentation. Treat that file as third-party
+proprietary code and do not redistribute it.

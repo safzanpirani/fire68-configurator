@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>FIRE68</title>
+<style>
+  :root {
+    --bg: #12141a;
+    --panel: #1a1d26;
+    --panel-2: #212633;
+    --line: #2c3242;
+    --text: #e6e9f0;
+    --muted: #8b93a7;
+    --accent: #4da3ff;
+    --accent-dim: #2b5f96;
+    --warn: #ffb454;
+    --danger: #ff6b6b;
+    --ok: #5ad18b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 18px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    flex: none;
+  }
+  header h1 { font-size: 15px; margin: 0; letter-spacing: .08em; }
+  .stat { color: var(--muted); font-size: 12px; }
+  .stat b { color: var(--text); font-weight: 600; }
+  .spacer { flex: 1; }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot.on { background: var(--ok); }
+  .dot.off { background: var(--danger); }
+
+  nav {
+    display: flex;
+    gap: 2px;
+    padding: 0 18px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    flex: none;
+  }
+  nav button {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    padding: 9px 14px;
+    font: inherit;
+    cursor: pointer;
+  }
+  nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+  nav button:hover:not(.active) { color: var(--text); }
+
+  main { flex: 1; overflow: auto; padding: 18px; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+  .key {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 7px 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: background .12s, border-color .12s;
+  }
+  .key:hover { background: var(--panel-2); }
+  .key.sel { border-color: var(--accent); background: var(--accent-dim); }
+  .key .name { font-weight: 600; font-size: 13px; }
+  .key .pt { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .key .bar {
+    height: 3px;
+    background: var(--line);
+    border-radius: 2px;
+    margin-top: 5px;
+    overflow: hidden;
+  }
+  .key .bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .panel h2 {
+    margin: 0 0 12px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+  }
+
+  .row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .row label { width: 190px; color: var(--muted); flex: none; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  .val { width: 78px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  button.act {
+    background: var(--accent);
+    color: #08101c;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 16px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.act:hover { filter: brightness(1.1); }
+  button.act:disabled { opacity: .45; cursor: default; filter: none; }
+  button.ghost {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 8px 16px;
+    font: inherit;
+    cursor: pointer;
+  }
+  button.ghost:hover { background: var(--panel-2); }
+
+  .msg { margin-top: 10px; font-size: 12px; min-height: 18px; }
+  .msg.err { color: var(--danger); }
+  .msg.ok { color: var(--ok); }
+  .msg.warn { color: var(--warn); }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+
+  .axes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .axis .lab { display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 4px; }
+  .axis .track { height: 8px; background: var(--panel-2); border-radius: 4px; position: relative; overflow: hidden; }
+  .axis .track i { position: absolute; top: 0; bottom: 0; background: var(--accent); }
+
+  code { background: var(--panel-2); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .hint { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FIRE68</h1>
+  <span class="stat">firmware <b id="fw">—</b></span>
+  <span class="stat">brightness <b id="bright">—</b></span>
+  <span class="stat"><span id="dbgdot" class="dot off"></span>debug <b id="dbg">—</b></span>
+  <div class="spacer"></div>
+  <button class="ghost" id="refresh">Refresh</button>
+</header>
+
+<nav>
+  <button data-view="keys" class="active">Keys</button>
+  <button data-view="analog">Analog</button>
+  <button data-view="pad">Gamepad</button>
+  <button data-view="device">Device</button>
+</nav>
+
+<main>
+  <!-- KEYS -->
+  <section class="view active" id="view-keys">
+    <div class="hint">Click a key to edit its actuation point and rapid trigger. Values are millimetres.</div>
+    <div class="grid" id="keygrid"></div>
+
+    <div class="panel" id="editor" style="display:none">
+      <h2>Slot <span id="edslot"></span> — <span id="edname"></span></h2>
+      <div class="row">
+        <label>Actuation point</label>
+        <input type="range" id="point" min="1" max="450" />
+        <span class="val" id="pointv"></span>
+      </div>
+      <div class="row">
+        <label>Rapid trigger, press</label>
+        <input type="range" id="prt" min="0" max="200" />
+        <span class="val" id="prtv"></span>
+      </div>
+      <div class="row">
+        <label>Rapid trigger, release</label>
+        <input type="range" id="rrt" min="0" max="200" />
+        <span class="val" id="rrtv"></span>
+      </div>
+      <div class="row">
+        <button class="act" id="apply">Apply to keyboard</button>
+        <button class="ghost" id="revert">Reset to 1.50 mm</button>
+      </div>
+      <div class="msg" id="keymsg"></div>
+    </div>
+  </section>
+
+  <!-- ANALOG -->
+  <section class="view" id="view-analog">
+    <div class="hint">
+      Live key travel. Needs debug mode on. The largest value you see when bottoming
+      out a key is your full travel — use it for <code>travel_max</code>.
+    </div>
+    <div class="panel">
+      <div class="row">
+        <button class="act" id="monstart">Start monitor</button>
+        <button class="ghost" id="monstop">Stop</button>
+        <span class="stat">peak seen <b id="peak">—</b></span>
+      </div>
+      <div class="msg" id="monmsg"></div>
+    </div>
+    <div class="panel">
+      <h2>Live travel</h2>
+      <table>
+        <thead><tr><th>Slot</th><th>Key</th><th>Raw</th><th>mm</th><th style="width:45%">Travel</th></tr></thead>
+        <tbody id="montable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- GAMEPAD -->
+  <section class="view" id="view-pad">
+    <div class="hint">
+      Maps key travel onto a virtual Xbox controller, so a half-pressed key gives a
+      half-deflected stick. Needs ViGEmBus and debug mode on.
+    </div>
+    <div class="panel">
+      <div class="row">
+        <label>Config file</label>
+        <input type="text" id="cfgpath" value="gamepad.json"
+               style="flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:7px 10px;border-radius:5px;font:inherit" />
+      </div>
+      <div class="row">
+        <button class="act" id="padstart">Start</button>
+        <button class="ghost" id="padstop">Stop</button>
+      </div>
+      <div class="msg" id="padmsg"></div>
+    </div>
+    <div class="panel">
+      <h2>Virtual pad output</h2>
+      <div class="axes">
+        <div class="axis"><div class="lab"><span>Left X</span><b id="lxv">0</b></div><div class="track"><i id="lx"></i></div></div>
+        <div class="axis"><div class="lab"><span>Left Y</span><b id="lyv">0</b></div><div class="track"><i id="ly"></i></div></div>
+        <div class="axis"><div class="lab"><span>Right X</span><b id="rxv">0</b></div><div class="track"><i id="rx"></i></div></div>
+        <div class="axis"><div class="lab"><span>Right Y</span><b id="ryv">0</b></div><div class="track"><i id="ry"></i></div></div>
+        <div class="axis"><div class="lab"><span>Left trigger</span><b id="ltv">0</b></div><div class="track"><i id="lt"></i></div></div>
+        <div class="axis"><div class="lab"><span>Right trigger</span><b id="rtv">0</b></div><div class="track"><i id="rt"></i></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEVICE -->
+  <section class="view" id="view-device">
+    <div class="panel">
+      <h2>Debug mode</h2>
+      <div class="hint">
+        Enables the analog travel stream that the monitor and gamepad read.
+        This writes one bit to the keyboard's settings and is reversible.
+      </div>
+      <div class="row">
+        <button class="act" id="dbgon">Turn on</button>
+        <button class="ghost" id="dbgoff">Turn off</button>
+      </div>
+      <div class="msg" id="dbgmsg"></div>
+    </div>
+    <div class="panel">
+      <h2>Safety check</h2>
+      <div class="hint">
+        Confirms that decoding and re-encoding the key table reproduces the keyboard's
+        own bytes exactly, so a write only changes the field it targets. Read-only.
+      </div>
+      <div class="row"><button class="ghost" id="verify">Run check</button></div>
+      <div class="msg" id="vermsg"></div>
+    </div>
+    <div class="panel">
+      <h2>Engine</h2>
+      <div class="hint">All device access goes through this binary.</div>
+      <div><code id="binpath">—</code></div>
+    </div>
+  </section>
+</main>
+
+<script src="renderer.js"></script>
+</body>
+</html>

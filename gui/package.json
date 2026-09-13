@@ -1,12 +1,51 @@
 {
   "name": "fire68-gui",
+  "productName": "FIRE68",
   "version": "0.1.0",
-  "description": "Desktop configurator for the FIRE68 hall-effect keyboard",
+  "description": "Configurator for the FIRE68 hall-effect keyboard",
+  "author": "Safzan Pirani",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder --win"
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "dev.safzan.fire68",
+    "productName": "FIRE68",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "capture-hook.js",
+      "index.html",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../fire68/target/release/fire68.exe",
+        "to": "fire68.exe"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FIRE68",
+      "artifactName": "FIRE68-Setup-${version}.${ext}"
+    }
   }
 }

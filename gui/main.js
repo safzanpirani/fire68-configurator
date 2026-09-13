@@ -12,12 +12,22 @@ const fs = require('fs');
 const BIN = resolveBinary();
 
 function resolveBinary() {
-  const candidates = [
-    path.join(__dirname, '..', 'fire68', 'target', 'release', 'fire68.exe'),
-    path.join(__dirname, '..', 'fire68', 'target', 'debug', 'fire68.exe'),
-    path.join(process.resourcesPath || '', 'fire68.exe'),
-  ];
+  // An installed build carries its own copy beside the app resources. Only a
+  // checkout falls back to the build tree.
+  const candidates = app.isPackaged
+    ? [path.join(process.resourcesPath, 'fire68.exe')]
+    : [
+        path.join(__dirname, '..', 'fire68', 'target', 'release', 'fire68.exe'),
+        path.join(__dirname, '..', 'fire68', 'target', 'debug', 'fire68.exe'),
+      ];
   return candidates.find((p) => fs.existsSync(p)) || candidates[0];
+}
+
+/// Where user files live. An installed app has no meaningful working
+/// directory, so a relative config path must resolve somewhere stable.
+function userFile(name) {
+  if (path.isAbsolute(name)) return name;
+  return path.join(app.getPath('userData'), name);
 }
 
 /// Run a one-shot command and parse its single JSON object.
@@ -113,9 +123,13 @@ function createWindow() {
     return { ok: true };
   });
   ipcMain.handle('start-gamepad', (_e, configPath) => {
-    startStream(win, ['gamepad', '--config', configPath], 'gamepad-data');
+    startStream(win, ['gamepad', '--config', userFile(configPath)], 'gamepad-data');
     return { ok: true };
   });
+  ipcMain.handle('init-gamepad', (_e, configPath) =>
+    runJson(['gamepad', '--init', '--config', userFile(configPath)])
+  );
+  ipcMain.handle('config-dir', () => app.getPath('userData'));
   ipcMain.handle('stop-stream', () => {
     stopStream();
     return { ok: true };

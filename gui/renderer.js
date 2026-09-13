@@ -91,6 +91,7 @@ document.querySelectorAll('nav button').forEach((b) => {
 
 async function load() {
   $('binpath').textContent = await window.fire68.binaryPath();
+  $('cfgdir').textContent = await window.fire68.configDir();
 
   const info = await window.fire68.info();
   if (!info.ok) {
@@ -268,6 +269,14 @@ window.fire68.onMonitor((d) => {
 });
 
 // ---------------------------------------------------------------- gamepad
+
+$('padinit').onclick = async () => {
+  setMsg('padmsg', 'reading key matrix…');
+  const res = await window.fire68.initGamepad($('cfgpath').value.trim() || 'gamepad.json');
+  if (!res.ok) { setMsg('padmsg', res.error, 'err'); return; }
+  const missing = (res.missing || []).length ? `, missing ${res.missing.join(', ')}` : '';
+  setMsg('padmsg', `created with ${res.bindings} bindings${missing}`, 'ok');
+};
 
 $('padstart').onclick = async () => {
   setMsg('padmsg', 'starting…');

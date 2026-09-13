@@ -94,6 +94,25 @@ because the firmware stores these as 9-bit values.
 
 ## Desktop app
 
+### Install it
+
+```
+cd fire68 && cargo build --release
+cd ../gui && npm install && npm run dist
+```
+
+That produces `gui/dist/FIRE68-Setup-<version>.exe`. Running it installs a
+normal Windows app: a Start Menu and desktop entry, an Apps list entry with an
+uninstaller, and no terminal. It installs per user under
+`%LOCALAPPDATA%\Programs\FIRE68`, so it needs no administrator rights.
+
+The installer bundles the Rust binary, so an installed copy does not depend on
+the build tree. Settings and gamepad bindings live in `%APPDATA%\FIRE68`.
+
+Add `/S` to install without prompts.
+
+### Run it from a checkout
+
 ```
 cd gui
 npm install
@@ -110,13 +129,14 @@ Three tabs, with a light and a dark theme:
   keys tuned away from the factory 1.50 mm are marked, and clicking one opens
   the actuation and rapid-trigger controls. Switching on live travel fills each
   key from the bottom as you press it.
-- **Gamepad** starts and stops the virtual controller and shows live stick and
-  trigger positions.
+- **Gamepad** creates the binding file, starts and stops the virtual
+  controller, and shows live stick and trigger positions.
 - **Device** holds the write safety check, the debug flag, and the firmware,
   lighting and poll-rate readout.
 
-Relative config paths resolve against `gui/`, so keep `gamepad.json` there or
-give an absolute path.
+A relative binding path resolves against the app's settings folder, so the
+default `gamepad.json` works in both an installed copy and a checkout. Absolute
+paths are used as given.
 
 ## Safety
 

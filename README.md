@@ -39,7 +39,7 @@ The binary lands at `fire68/target/release/fire68.exe`.
 
 ```
 fire68 list       # every HID interface the keyboard exposes
-fire68 info       # firmware version, lighting, report rate, debug flag
+fire68 info       # firmware version, poll rate, lighting, debug flag
 fire68 keymap     # which key each slot index sends
 fire68 travel     # per-key actuation point and rapid trigger
 ```
@@ -70,7 +70,7 @@ fire68 gamepad
 | Command | Effect | Writes to keyboard |
 |---|---|---|
 | `list` | Enumerate the keyboard's HID interfaces | no |
-| `info` | Firmware version and global settings | no |
+| `info` | Firmware version, poll rate and global settings | no |
 | `keymap` | Slot index to key name | no |
 | `travel` | Per-key actuation and rapid trigger | no |
 | `monitor` | Stream live analog travel | no |
@@ -104,15 +104,16 @@ The UI does not reimplement the protocol. It spawns the Rust binary with
 `--json` and renders the result, so the wire format exists in exactly one
 place. Build the binary first.
 
-Four tabs:
+Three tabs, with a light and a dark theme:
 
-- **Keys** shows every key with its actuation point. Click one to edit
-  actuation and rapid trigger in millimetres, then apply.
-- **Analog** streams live travel per key with bar graphs and reports the peak
-  value observed.
+- **Keys** draws the physical 65% layout. Every key shows its actuation point,
+  keys tuned away from the factory 1.50 mm are marked, and clicking one opens
+  the actuation and rapid-trigger controls. Switching on live travel fills each
+  key from the bottom as you press it.
 - **Gamepad** starts and stops the virtual controller and shows live stick and
   trigger positions.
-- **Device** holds the debug flag toggle and the encoder safety check.
+- **Device** holds the write safety check, the debug flag, and the firmware,
+  lighting and poll-rate readout.
 
 Relative config paths resolve against `gui/`, so keep `gamepad.json` there or
 give an absolute path.

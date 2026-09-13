@@ -110,8 +110,22 @@ Measured full travel on the reference board is `350`, so a key bottoms out at
 ## Key matrix — verified
 
 `GetUseKeyMatrix` returns 384 bytes: 128 slots of 3 bytes, `[class, code_hi,
-code_lo]`. Class `0x10` is a plain keyboard key and the code is its HID usage.
-Class `0xF0` is a function action.
+code_lo]`. Class `0x10` is a plain keyboard key. Class `0xF0` is a function
+action. A slot reading `0xFFFF` is an unused matrix position.
+
+For class `0x10`, a code of `0xFF` or below is a HID keyboard usage. A code
+above that is a **modifier bitmask shifted left by eight**:
+
+| Code | Key | Code | Key |
+|---|---|---|---|
+| `0x0100` | Left Ctrl | `0x1000` | Right Ctrl |
+| `0x0200` | Left Shift | `0x2000` | Right Shift |
+| `0x0400` | Left Alt | `0x4000` | Right Alt |
+| `0x0800` | Left Win | | |
+
+On the reference board, slots 0 to 71 carry keys, with gaps at 8, 35 and 59,
+and every slot from 72 upward reads `0xFFFF`. That is 69 keys: the 68 of a 65%
+layout plus one matrix position (`0x87`) with no physical key.
 
 Slot index is the same index used by the trigger-travel table, so reading this
 matrix identifies a physical key without needing anyone to press it. On the
@@ -128,8 +142,7 @@ payload.
 
 | Offset | Bits | Field |
 |---|---|---|
-| 4 | 0-3 | report rate |
-| 4 | 4-7 | tick rate |
+| 4 | all 8 | poll rate, see below |
 | 6 | 0 | Windows-key lock |
 | 6 | 1 | Alt-Tab lock |
 | 6 | 2 | Alt-F4 lock |
@@ -148,6 +161,21 @@ payload.
 
 A stock board read back brightness `0x64` (100) and lighting mode `0x06`, which
 matches the vendor UI.
+
+### Poll rate — verified
+
+The vendor code exposes byte 4 as a low "report rate" nibble and a high "tick
+rate" nibble, but the rates above 1000 Hz differ only in the high nibble, so
+the byte has to be read as a unit:
+
+| Byte | Rate | Byte | Rate |
+|---|---|---|---|
+| `0x01` | 1000 Hz | `0x21` | 2000 Hz |
+| `0x02` | 500 Hz | `0x41` | 4000 Hz |
+| `0x04` | 250 Hz | `0x81` | 8000 Hz |
+| `0x08` | 125 Hz | | |
+
+The reference board reads `0x01`, so 1000 Hz.
 
 ## Analog travel stream
 

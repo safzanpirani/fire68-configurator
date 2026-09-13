@@ -11,8 +11,9 @@ fire68/            Rust binary, the only code that touches the device
 gui/               Electron desktop app
   main.js          Spawns the binary, relays JSON over IPC
   preload.js       Context-isolated bridge
-  renderer.js      UI logic
-  index.html       Markup and styles
+  renderer.js      UI logic and the physical key layout
+  index.html       Markup, themes and styles
+  capture-hook.js  Dev-only screenshot hook, inert without ELECTRON_CAPTURE
 reference/         Deobfuscated vendor bundle, kept as protocol documentation
 docs/              This documentation
 ```
@@ -116,6 +117,19 @@ named operations. The renderer cannot spawn processes or read files.
 One streaming child process exists at a time. Starting a stream stops any
 previous one, and quitting the app kills it, so no orphan holds the device open.
 
+## Drawing the keyboard
+
+`LAYOUT` in `gui/renderer.js` describes the physical 65% board as five rows of
+exactly 16 units. Each position carries the code the device reports for that
+key, and positions resolve against the live key matrix at load time rather than
+against a hardcoded slot order. A position that finds no match renders dimmed,
+and any key the device reports without a layout position is listed below the
+board. Neither case is silently dropped, because a board variant with a
+different matrix should be visibly wrong rather than quietly incomplete.
+
+Modifier keys need care. The matrix encodes them as bitmasks shifted left by
+eight rather than as HID usages, so `0x0200` is LShift.
+
 ## Testing strategy
 
 Unit tests cover the layers that do not need hardware:
@@ -127,6 +141,8 @@ Unit tests cover the layers that do not need hardware:
 - The debug flag toggle, asserting neighbouring bits are preserved
 - Travel normalisation, including the dead zone and clamping
 - Configuration validation, rejecting duplicate bindings and inverted ranges
+- Poll-rate decoding, including that an undocumented byte returns nothing
+  rather than guessing
 
 Hardware behaviour is verified by running read commands against the device and
 checking the values against what the vendor UI reports. `verify-encoding` is

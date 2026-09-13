@@ -26,6 +26,10 @@ what remains unknown. Reference board: FIRE68, firmware 1.09.
 | Analog stream | `FastCommunicationStart` produces `0xA0` reports carrying per-key travel |
 | Analog stream needs no config change | Travel streamed correctly with the debug flag off |
 | Virtual controller | `gamepad --test` plugs in a pad that Windows sees and drives its axes |
+| Key matrix covers 69 slots | Slots 0 to 71 carry keys, with gaps at 8, 35 and 59; slots 72 upward read `0xFFFF` |
+| Modifier encoding | Codes at or above `0x100` are modifier bitmasks shifted left by eight |
+| Poll rate | Byte 4 reads `0x01`, which the vendor enum defines as 1000 Hz |
+| Physical layout | All 68 layout positions resolve against the live matrix; only slot 16 (`0x87`) has no position |
 
 ## Notable finding: the debug flag is unnecessary
 

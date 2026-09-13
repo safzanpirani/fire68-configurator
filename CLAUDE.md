@@ -14,13 +14,25 @@ gamepad emulation, which the vendor software does not provide.
 ```bash
 cd fire68
 cargo build --release          # binary at target/release/fire68.exe
-cargo test                     # 11 tests, no hardware needed
+cargo test                     # 12 tests, no hardware needed
 cargo test travel_roundtrips_through_bit_packing   # a single test by name
 cargo test proto::             # one module's tests
 
 cd gui
 npm install && npm start       # Electron UI; build the Rust binary first
 ```
+
+Look at the UI rather than guessing about it. This writes one PNG per view and
+exits, and is inert unless `ELECTRON_CAPTURE` is set:
+
+```bash
+cd gui
+ELECTRON_CAPTURE=/tmp/shots ELECTRON_CAPTURE_VIEWS=keys,pad,device   ELECTRON_CAPTURE_THEMES=dark,light ELECTRON_CAPTURE_SETTLE=5000   npx electron .
+```
+
+The settle delay matters because every panel shells out to the Rust binary, so
+the window paints seconds before its data lands. See the `electron-tab-capture`
+skill.
 
 Hardware-free checks that catch most regressions:
 
@@ -54,6 +66,12 @@ touches `main.rs` alone.
 object; `monitor` and `gamepad` emit one object per line and flush. Changing a
 key name breaks `gui/renderer.js`.
 
+**The UI draws a real 65% layout.** `LAYOUT` in `gui/renderer.js` holds five
+rows, each exactly 16 units wide, and every position carries the code the
+device reports. Positions resolve against the live key matrix, so a key that
+does not match is drawn dimmed and anything unplaced is listed rather than
+hidden. Keep rows at 16u when editing.
+
 ## Protocol gotchas
 
 These cost real time to rediscover. `PROTOCOL.md` has the full format.
@@ -74,6 +92,15 @@ once the analog stream is running.
 **Travel units are hundredths of a millimetre**, stored in 9-bit fields, so
 `0..=511`. Stock actuation is `150` (1.50 mm). Measured full travel is `350`
 (3.50 mm).
+
+**Key matrix codes above `0xFF` are modifier bitmasks shifted left by eight.**
+`0x0100` is LCtrl, `0x0200` LShift, `0x0400` LAlt, `0x0800` LWin, `0x1000`
+RCtrl, `0x2000` RShift, `0x4000` RAlt. `0xFFFF` marks an unused matrix slot.
+Class `0xF0` is the Fn action rather than a keyboard usage.
+
+**The poll rate is a whole byte, not the low nibble.** The vendor code splits
+byte 4 into report-rate and tick-rate nibbles, but 1000, 2000, 4000 and 8000 Hz
+all share a low nibble of 1. Decode the byte through `proto::report_rate_hz`.
 
 ## Hardware safety
 

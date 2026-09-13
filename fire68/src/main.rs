@@ -194,7 +194,8 @@ fn info(dev: &Fire68, json_mode: bool) -> Result<()> {
                 "ok": true,
                 "firmware": version,
                 "debug_mode": debug_on,
-                "report_rate": area[4] & 0x0F,
+                "report_rate_raw": area[4],
+                "report_rate_hz": proto::report_rate_hz(area[4]),
                 "win_lock": area[6] & 1,
                 "lighting_mode": area[8],
                 "brightness": area[9],
@@ -207,7 +208,10 @@ fn info(dev: &Fire68, json_mode: bool) -> Result<()> {
 
     println!("firmware    {version}");
     println!("debug mode  {}", if debug_on { "on" } else { "off" });
-    println!("report rate {}", area[4] & 0x0F);
+    match proto::report_rate_hz(area[4]) {
+        Some(hz) => println!("poll rate   {hz} Hz"),
+        None => println!("poll rate   unknown (raw {:#04x})", area[4]),
+    }
     println!("win lock    {}", area[6] & 1);
     println!("brightness  {}", area[9]);
     println!("\nfunction area (first 32 bytes):");

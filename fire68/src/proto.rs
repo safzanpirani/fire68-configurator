@@ -29,6 +29,24 @@ pub const SYNC_ID: u8 = 0xA1;
 pub const VID: u16 = 0x373B;
 pub const PID_FIRE68: u16 = 0x104E;
 
+/// Poll rate, encoded as a whole byte in the function area.
+///
+/// The vendor code splits this byte into a low "report rate" nibble and a high
+/// "tick rate" nibble, but the rates above 1000 Hz differ only in the high
+/// nibble, so the byte has to be read as a unit.
+pub fn report_rate_hz(byte: u8) -> Option<u16> {
+    Some(match byte {
+        1 => 1000,
+        2 => 500,
+        4 => 250,
+        8 => 125,
+        33 => 2000,
+        65 => 4000,
+        129 => 8000,
+        _ => return None,
+    })
+}
+
 /// Key matrix: 128 slots of 3 bytes, `[class, code_hi, code_lo]`.
 pub const MATRIX_SLOTS: usize = 128;
 pub const MATRIX_ENTRY: usize = 3;
@@ -240,6 +258,14 @@ mod tests {
         assert_eq!(p[3], expected);
         p[3] = 0;
         assert_eq!(checksum(&p), expected, "byte 3 must not feed the sum");
+    }
+
+    #[test]
+    fn report_rate_covers_the_documented_encodings() {
+        assert_eq!(report_rate_hz(1), Some(1000));
+        assert_eq!(report_rate_hz(8), Some(125));
+        assert_eq!(report_rate_hz(129), Some(8000));
+        assert_eq!(report_rate_hz(7), None, "undocumented bytes must not guess");
     }
 
     #[test]
